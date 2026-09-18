@@ -1,0 +1,88 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Brand {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+  deals       Deal[]
+}
+
+model Deal {
+  id             String   @id @default(cuid())
+  brandId        String
+  title          String
+  dealCode       String
+  dealDate       DateTime @default(now())
+  expectedOrders Int      @default(0)
+  totalAmount    Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  brand  Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  orders Order[]
+}
+
+model Order {
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  brandId           String
+  dealId            String?
+  customerName      String
+  customerPhone     String?
+  amount            Float     @default(0)
+  status            String    @default("PENDING_REVIEW") // PENDING_REVIEW | REVIEW_SUBMITTED
+  orderDate         DateTime  @default(now())
+  reviewSubmittedAt DateTime?
+  reviewRating      Int?
+  deliveredProofUrl String?
+  ratingProofUrl    String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  brand   Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  deal    Deal?              @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  reviews ReviewSubmission[]
+}
+
+model ReviewSubmission {
+  id                     String   @id @default(cuid())
+  orderId                String
+  customerName           String?
+  rating                 Int?
+  deliveredScreenshotUrl String?
+  ratingScreenshotUrl    String?
+  source                 String   @default("GOOGLE_FORM") // GOOGLE_FORM | DIRECT_PORTAL | MANUAL
+  rawData                String?
+  createdAt              DateTime @default(now())
+
+  order Order? @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+}
+
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
