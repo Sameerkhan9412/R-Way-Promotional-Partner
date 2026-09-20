@@ -33,7 +33,6 @@ export default function SubmitReviewPage() {
   const reviewFileRef = useRef<HTMLInputElement>(null);
 
   // Mode 2: By Rating Fields
-  const [rating, setRating] = useState(5);
   const [ratingUrl, setRatingUrl] = useState('');
   const [isUploadingRating, setIsUploadingRating] = useState(false);
   const [ratingUploadInfo, setRatingUploadInfo] = useState<string | null>(null);
@@ -146,13 +145,12 @@ export default function SubmitReviewPage() {
         source: submissionType === 'review' ? 'PORTAL_REVIEW' : 'PORTAL_RATING',
       };
 
+      payload.rating = 5;
       if (submissionType === 'review') {
         payload.reviewLink = reviewLink.trim();
         payload.reviewScreenshotUrl = reviewUrl.trim();
-        payload.rating = 5;
       } else {
         payload.ratingScreenshotUrl = ratingUrl.trim();
-        payload.rating = rating;
       }
 
       const res = await fetch('/api/reviews/submit', {
@@ -429,46 +427,6 @@ export default function SubmitReviewPage() {
               </div>
             )}
 
-            {/* 4. MODE-SPECIFIC: Star Rating (Only in 'By Rating' Mode) */}
-            {submissionType === 'rating' && (
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    color: 'var(--rway-teal-950)',
-                    marginBottom: '0.4rem',
-                  }}
-                >
-                  Rating Given on Amazon
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        padding: '4px',
-                      }}
-                    >
-                      <Star
-                        size={28}
-                        fill={star <= rating ? '#eab308' : 'none'}
-                        color={star <= rating ? '#eab308' : '#cbd5e1'}
-                      />
-                    </button>
-                  ))}
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, marginLeft: '0.5rem', color: 'var(--rway-gold-700)' }}>
-                    {rating} Star{rating > 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* 5. Delivered Screenshot Proof (Required for Both Modes) */}
             <div>
