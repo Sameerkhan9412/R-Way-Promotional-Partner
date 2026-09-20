@@ -7,8 +7,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     const brandId = searchParams.get('brandId');
-    const status = searchParams.get('status');
+    const status = searchParams.get('status') || searchParams.get('parentFilter');
     const timeRange = searchParams.get('timeRange') || 'all';
+    const specificDate = searchParams.get('specificDate') || searchParams.get('date');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
@@ -30,19 +31,33 @@ export async function GET(request: Request) {
       where.orderDate = { gte: startOfDay };
     } else if (timeRange === 'yesterday') {
       const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0);
-      const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+      const endOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
       where.orderDate = { gte: startOfYesterday, lte: endOfYesterday };
+    } else if (timeRange === 'single' || (specificDate && timeRange !== 'custom')) {
+      if (specificDate) {
+        const [y, m, d] = specificDate.split('-').map(Number);
+        const startLocal = new Date(y, m - 1, d, 0, 0, 0, 0);
+        const endLocal = new Date(y, m - 1, d, 23, 59, 59, 999);
+        const startUtc = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        const endUtc = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+
+        const minStart = new Date(Math.min(startLocal.getTime(), startUtc.getTime()));
+        const maxEnd = new Date(Math.max(endLocal.getTime(), endUtc.getTime()));
+        where.orderDate = { gte: minStart, lte: maxEnd };
+      }
     } else if (timeRange === 'week') {
       const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       where.orderDate = { gte: oneWeekAgo };
     } else if (timeRange === 'custom') {
       if (startDate || endDate) {
         where.orderDate = {};
-        if (startDate) where.orderDate.gte = new Date(startDate);
+        if (startDate) {
+          const [sy, sm, sd] = startDate.split('-').map(Number);
+          where.orderDate.gte = new Date(sy, sm - 1, sd, 0, 0, 0, 0);
+        }
         if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          where.orderDate.lte = end;
+          const [ey, em, ed] = endDate.split('-').map(Number);
+          where.orderDate.lte = new Date(ey, em - 1, ed, 23, 59, 59, 999);
         }
       }
     }

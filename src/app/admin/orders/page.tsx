@@ -70,9 +70,13 @@ export default function OrdersDashboardPage() {
   // Parent Filter Tabs: 'all' | 'brands' | 'pending' | 'submitted'
   const [parentFilter, setParentFilter] = useState<'all' | 'brands' | 'pending' | 'submitted'>('all');
 
+  // Review Status Filter: 'all' | 'pending' | 'submitted'
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'submitted'>('all');
+
   // Child Filters
   const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<string>('all'); // all | today | yesterday | week | custom
+  const [timeRange, setTimeRange] = useState<string>('all'); // all | today | yesterday | single | week | custom
+  const [specificDate, setSpecificDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -114,6 +118,12 @@ export default function OrdersDashboardPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const handleStepDate = (days: number) => {
+    const base = specificDate ? new Date(specificDate) : new Date();
+    base.setDate(base.getDate() + days);
+    setSpecificDate(base.toISOString().split('T')[0]);
+  };
+
   // Fetch Brands
   const fetchBrands = useCallback(async () => {
     try {
@@ -133,16 +143,18 @@ export default function OrdersDashboardPage() {
     try {
       const params = new URLSearchParams();
 
-      if (parentFilter === 'pending') params.set('parentFilter', 'pending');
-      else if (parentFilter === 'submitted') params.set('parentFilter', 'submitted');
-      else params.set('parentFilter', 'all');
+      if (statusFilter === 'pending') params.set('status', 'pending');
+      else if (statusFilter === 'submitted') params.set('status', 'submitted');
+      else params.set('status', 'all');
 
       if (selectedBrandId && selectedBrandId !== 'all') {
         params.set('brandId', selectedBrandId);
       }
 
       params.set('timeRange', timeRange);
-      if (timeRange === 'custom') {
+      if (timeRange === 'single' && specificDate) {
+        params.set('specificDate', specificDate);
+      } else if (timeRange === 'custom') {
         if (startDate) params.set('startDate', startDate);
         if (endDate) params.set('endDate', endDate);
       }
@@ -168,7 +180,7 @@ export default function OrdersDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [parentFilter, selectedBrandId, timeRange, startDate, endDate, searchQuery, sortBy, sortOrder]);
+  }, [statusFilter, selectedBrandId, timeRange, specificDate, startDate, endDate, searchQuery, sortBy, sortOrder]);
 
   // Load Settings
   useEffect(() => {
@@ -190,23 +202,30 @@ export default function OrdersDashboardPage() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Toggle order status
-  const handleToggleStatus = async (order: OrderItem) => {
-    const newStatus = order.status === 'PENDING_REVIEW' ? 'REVIEW_SUBMITTED' : 'PENDING_REVIEW';
+  // Mark order as submitted (Pending -> Submitted)
+  const handleMarkAsSubmitted = async (order: OrderItem) => {
+    if (order.status === 'REVIEW_SUBMITTED') {
+      // Already submitted; open proof details instead of modifying status
+      setViewProofOrder(order);
+      return;
+    }
+
+    if (!confirm(`Mark Order ${order.orderId} as Review Submitted?`)) return;
+
     try {
       const res = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: order.id, status: newStatus }),
+        body: JSON.stringify({ id: order.id, status: 'REVIEW_SUBMITTED' }),
       });
 
       if (res.ok) {
-        showToast(`Order ${order.orderId} updated to ${newStatus === 'REVIEW_SUBMITTED' ? 'Review Submitted' : 'Pending Review'}`);
+        showToast(`Order ${order.orderId} marked as Review Submitted`);
         fetchOrders();
         fetchBrands();
       }
     } catch {
-      showToast('Failed to toggle status');
+      showToast('Failed to mark order as submitted');
     }
   };
 
@@ -241,11 +260,13 @@ export default function OrdersDashboardPage() {
     if (brandId !== 'all') params.set('brandId', brandId);
     else if (selectedBrandId !== 'all') params.set('brandId', selectedBrandId);
 
-    if (parentFilter === 'pending') params.set('status', 'pending');
-    else if (parentFilter === 'submitted') params.set('status', 'submitted');
+    if (statusFilter === 'pending') params.set('status', 'pending');
+    else if (statusFilter === 'submitted') params.set('status', 'submitted');
 
     params.set('timeRange', timeRange);
-    if (timeRange === 'custom') {
+    if (timeRange === 'single' && specificDate) {
+      params.set('specificDate', specificDate);
+    } else if (timeRange === 'custom') {
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
     }
@@ -362,7 +383,7 @@ export default function OrdersDashboardPage() {
             {/* Bulk WhatsApp Import Button */}
             <Link href="/admin/orders/bulk-import" className="btn btn-gold">
               <UploadCloud size={17} />
-              <span>Bulk WhatsApp Import</span>
+              <span>Bulk Upload</span>
             </Link>
           </div>
         </div>
@@ -373,8 +394,11 @@ export default function OrdersDashboardPage() {
         <div style={{ marginBottom: '1.25rem' }}>
           <div className="filter-tabs">
             <button
-              onClick={() => setParentFilter('all')}
-              className={`filter-tab-btn ${parentFilter === 'all' ? 'active' : ''}`}
+              onClick={() => {
+                setParentFilter('all');
+                setStatusFilter('all');
+              }}
+              className={`filter-tab-btn ${parentFilter === 'all' && statusFilter === 'all' ? 'active' : ''}`}
             >
               <Layers size={16} />
               <span>All Orders</span>
@@ -382,7 +406,9 @@ export default function OrdersDashboardPage() {
             </button>
 
             <button
-              onClick={() => setParentFilter('brands')}
+              onClick={() => {
+                setParentFilter('brands');
+              }}
               className={`filter-tab-btn ${parentFilter === 'brands' ? 'active' : ''}`}
             >
               <BarChart3 size={16} />
@@ -391,8 +417,11 @@ export default function OrdersDashboardPage() {
             </button>
 
             <button
-              onClick={() => setParentFilter('pending')}
-              className={`filter-tab-btn ${parentFilter === 'pending' ? 'active' : ''}`}
+              onClick={() => {
+                setParentFilter('pending');
+                setStatusFilter('pending');
+              }}
+              className={`filter-tab-btn ${statusFilter === 'pending' ? 'active' : ''}`}
             >
               <Clock size={16} />
               <span>Reviews Pending</span>
@@ -402,8 +431,11 @@ export default function OrdersDashboardPage() {
             </button>
 
             <button
-              onClick={() => setParentFilter('submitted')}
-              className={`filter-tab-btn ${parentFilter === 'submitted' ? 'active' : ''}`}
+              onClick={() => {
+                setParentFilter('submitted');
+                setStatusFilter('submitted');
+              }}
+              className={`filter-tab-btn ${statusFilter === 'submitted' ? 'active' : ''}`}
             >
               <CheckCircle2 size={16} />
               <span>Reviews Submitted</span>
@@ -551,11 +583,11 @@ export default function OrdersDashboardPage() {
         )}
 
         {/* ========================================================================= */}
-        {/* CHILD FILTERS BAR (Required Feature) */}
+        {/* CHILD FILTERS BAR */}
         {/* ========================================================================= */}
-        <div className="child-filters-bar" style={{ marginBottom: '1.5rem' }}>
+        <div className="child-filters-bar" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           {/* Brand Selector Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '200px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: '180px' }}>
             <Tag size={16} color="var(--rway-teal-700)" />
             <select
               value={selectedBrandId}
@@ -572,7 +604,26 @@ export default function OrdersDashboardPage() {
             </select>
           </div>
 
-          {/* Time Presets & Custom Range */}
+          {/* Review Status Filter Dropdown */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: '185px' }}>
+            <Filter size={16} color="var(--rway-teal-700)" />
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                const val = e.target.value as 'all' | 'pending' | 'submitted';
+                setStatusFilter(val);
+                if (parentFilter !== 'brands') setParentFilter(val);
+              }}
+              className="rway-select"
+              style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
+            >
+              <option value="all">All Reviews ({counts.totalOrders})</option>
+              <option value="pending">⏳ Pending Reviews ({counts.pendingReview})</option>
+              <option value="submitted">✅ Submitted Reviews ({counts.submittedReview})</option>
+            </select>
+          </div>
+
+          {/* Time Presets & Specific Date / Custom Range */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
             <Calendar size={16} color="var(--rway-gold-600)" />
             <select
@@ -584,9 +635,54 @@ export default function OrdersDashboardPage() {
               <option value="all">All Time</option>
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
+              <option value="single">Specific Date (1 Day)</option>
               <option value="week">This Week (Last 7 Days)</option>
               <option value="custom">Custom Date Range</option>
             </select>
+
+            {timeRange === 'single' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <button
+                  type="button"
+                  onClick={() => handleStepDate(-1)}
+                  className="btn btn-outline btn-sm"
+                  title="Previous Day"
+                  style={{ padding: '0.42rem 0.6rem', fontSize: '0.85rem', lineHeight: 1 }}
+                >
+                  ‹
+                </button>
+                <input
+                  type="date"
+                  value={specificDate}
+                  onChange={(e) => setSpecificDate(e.target.value)}
+                  className="rway-input"
+                  style={{ fontSize: '0.82rem', padding: '0.42rem 0.6rem', width: '135px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleStepDate(1)}
+                  className="btn btn-outline btn-sm"
+                  title="Next Day"
+                  style={{ padding: '0.42rem 0.6rem', fontSize: '0.85rem', lineHeight: 1 }}
+                >
+                  ›
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSpecificDate(new Date().toISOString().split('T')[0])}
+                  className="btn btn-outline btn-sm"
+                  title="Select Today's Date"
+                  style={{
+                    padding: '0.42rem 0.65rem',
+                    fontSize: '0.75rem',
+                    color: 'var(--rway-teal-800)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Today
+                </button>
+              </div>
+            )}
 
             {timeRange === 'custom' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -681,19 +777,83 @@ export default function OrdersDashboardPage() {
               </span>
             </div>
 
-            {selectedBrandId !== 'all' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="badge badge-brand">
-                  Filtered: {brandStats.find((b) => b.id === selectedBrandId)?.name}
+            {/* Active Filters Badges */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+              {selectedBrandId !== 'all' && (
+                <span className="badge badge-brand" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span>Brand: {brandStats.find((b) => b.id === selectedBrandId)?.name}</span>
+                  <button
+                    onClick={() => setSelectedBrandId('all')}
+                    style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.85rem', lineHeight: 1 }}
+                    title="Clear brand filter"
+                  >
+                    ×
+                  </button>
                 </span>
-                <button
-                  onClick={() => setSelectedBrandId('all')}
-                  style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.78rem' }}
+              )}
+
+              {statusFilter !== 'all' && (
+                <span
+                  className="badge"
+                  style={{
+                    backgroundColor: statusFilter === 'submitted' ? 'var(--status-submitted-bg)' : 'var(--status-pending-bg)',
+                    color: statusFilter === 'submitted' ? 'var(--status-submitted-text)' : 'var(--status-pending-text)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
                 >
-                  Clear Brand Filter
+                  <span>Status: {statusFilter === 'submitted' ? 'Submitted Reviews' : 'Pending Reviews'}</span>
+                  <button
+                    onClick={() => {
+                      setStatusFilter('all');
+                      setParentFilter('all');
+                    }}
+                    style={{ border: 'none', background: 'none', color: 'inherit', cursor: 'pointer', fontSize: '0.85rem', lineHeight: 1 }}
+                    title="Clear status filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+
+              {timeRange === 'single' && specificDate && (
+                <span className="badge" style={{ backgroundColor: '#fef3c7', color: '#92400e', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span>Date: {specificDate}</span>
+                  <button
+                    onClick={() => setTimeRange('all')}
+                    style={{ border: 'none', background: 'none', color: '#92400e', cursor: 'pointer', fontSize: '0.85rem', lineHeight: 1 }}
+                    title="Clear date filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+
+              {(selectedBrandId !== 'all' || statusFilter !== 'all' || timeRange !== 'all' || searchQuery.trim()) && (
+                <button
+                  onClick={() => {
+                    setSelectedBrandId('all');
+                    setStatusFilter('all');
+                    setParentFilter('all');
+                    setTimeRange('all');
+                    setSearchQuery('');
+                  }}
+                  style={{
+                    border: '1px solid #fecaca',
+                    borderRadius: 'var(--radius-sm)',
+                    background: '#fff',
+                    color: '#dc2626',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    padding: '0.25rem 0.5rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  Reset All Filters
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <table className="rway-table">
@@ -791,23 +951,31 @@ export default function OrdersDashboardPage() {
                       {new Date(ord.orderDate).toLocaleDateString('en-GB')}
                     </td>
 
-                    {/* Status Badge with Click to Toggle */}
+                    {/* Status Badge */}
                     <td>
-                      <button
-                        onClick={() => handleToggleStatus(ord)}
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
-                        title="Click to toggle status between Pending and Submitted"
-                      >
-                        {ord.status === 'REVIEW_SUBMITTED' ? (
-                          <span className="badge badge-submitted">
+                      {ord.status === 'REVIEW_SUBMITTED' ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewProofOrder(ord)}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                          title="Review Submitted. Click to view review proof details."
+                        >
+                          <span className="badge badge-submitted" style={{ cursor: 'pointer' }}>
                             <CheckCircle2 size={12} /> Submitted
                           </span>
-                        ) : (
-                          <span className="badge badge-pending">
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleMarkAsSubmitted(ord)}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                          title="Pending Review. Click to mark as Submitted."
+                        >
+                          <span className="badge badge-pending" style={{ cursor: 'pointer' }}>
                             <Clock size={12} /> Pending Review
                           </span>
-                        )}
-                      </button>
+                        </button>
+                      )}
                     </td>
 
                     {/* Actions */}
@@ -1038,10 +1206,33 @@ export default function OrdersDashboardPage() {
                 </b>
               </div>
 
+              {/* Review Link (if available in notes) */}
+              {viewProofOrder.notes && viewProofOrder.notes.includes('http') && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-md)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#166534' }}>Amazon Review Link:</span>
+                  <a
+                    href={viewProofOrder.notes.replace(/^.*?(https?:\/\/[^\s|]+).*?$/, '$1')}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-outline btn-sm"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      color: 'var(--rway-teal-800)',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                    }}
+                  >
+                    <ExternalLink size={13} /> Open Review Link
+                  </a>
+                </div>
+              )}
+
               {/* Delivered Screenshot */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-                  Delivered Screenshot Proof:
+                  1. Delivered Screenshot Proof:
                 </label>
                 {viewProofOrder.deliveredProofUrl ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1075,10 +1266,10 @@ export default function OrdersDashboardPage() {
                 )}
               </div>
 
-              {/* Rating Screenshot */}
+              {/* Review / Rating Screenshot */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.35rem' }}>
-                  Rating Screenshot Proof:
+                  2. Review / Rating Screenshot Proof:
                 </label>
                 {viewProofOrder.ratingProofUrl ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

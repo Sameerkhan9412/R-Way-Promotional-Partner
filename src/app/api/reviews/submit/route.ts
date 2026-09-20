@@ -7,10 +7,13 @@ export async function POST(request: Request) {
     const {
       orderId,
       customerName,
-      rating,
+      submissionType = 'review',
+      reviewLink,
       deliveredScreenshotUrl,
+      reviewScreenshotUrl,
       ratingScreenshotUrl,
-      source = 'DIRECT_PORTAL',
+      rating,
+      source,
     } = body;
 
     if (!orderId || !orderId.trim()) {
@@ -18,6 +21,8 @@ export async function POST(request: Request) {
     }
 
     const cleanOrderId = orderId.trim();
+    const finalProofScreenshot = reviewScreenshotUrl || ratingScreenshotUrl || null;
+    const effectiveSource = source || (submissionType === 'rating' ? 'PORTAL_RATING' : 'PORTAL_REVIEW');
 
     // Find if order exists in DB
     const order = await prisma.order.findUnique({
@@ -30,6 +35,16 @@ export async function POST(request: Request) {
 
     if (order) {
       matched = true;
+      let updatedNotes = order.notes || '';
+      if (reviewLink && reviewLink.trim()) {
+        const cleanLink = reviewLink.trim();
+        if (!updatedNotes) {
+          updatedNotes = `Review Link: ${cleanLink}`;
+        } else if (!updatedNotes.includes(cleanLink)) {
+          updatedNotes = `${updatedNotes} | Review Link: ${cleanLink}`;
+        }
+      }
+
       updatedOrder = await prisma.order.update({
         where: { orderId: cleanOrderId },
         data: {
@@ -37,7 +52,8 @@ export async function POST(request: Request) {
           reviewSubmittedAt: new Date(),
           reviewRating: rating ? parseInt(rating, 10) : (order.reviewRating || 5),
           deliveredProofUrl: deliveredScreenshotUrl || order.deliveredProofUrl,
-          ratingProofUrl: ratingScreenshotUrl || order.ratingProofUrl,
+          ratingProofUrl: finalProofScreenshot || order.ratingProofUrl,
+          notes: updatedNotes || order.notes,
         },
       });
     }
@@ -49,8 +65,8 @@ export async function POST(request: Request) {
         customerName: customerName || (order ? order.customerName : null),
         rating: rating ? parseInt(rating, 10) : 5,
         deliveredScreenshotUrl: deliveredScreenshotUrl || null,
-        ratingScreenshotUrl: ratingScreenshotUrl || null,
-        source: source || 'DIRECT_PORTAL',
+        ratingScreenshotUrl: finalProofScreenshot || null,
+        source: effectiveSource,
         rawData: JSON.stringify(body),
       },
     });
@@ -59,8 +75,8 @@ export async function POST(request: Request) {
       success: true,
       matched,
       message: matched
-        ? `Review linked successfully! Order ${cleanOrderId} marked as REVIEW_SUBMITTED.`
-        : `Review recorded for Order ${cleanOrderId}. (Pending order sync in database)`,
+        ? `Submission verified successfully! Order ${cleanOrderId} marked as REVIEW_SUBMITTED.`
+        : `Submission received for Order ${cleanOrderId}. (Pending order sync in database)`,
       order: updatedOrder,
       submission,
     });

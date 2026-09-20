@@ -102,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
             }`}
           >
             <UploadCloud size={16} />
-            <span>Bulk WhatsApp Import</span>
+            <span>Bulk Upload</span>
           </Link>
         </nav>
 
