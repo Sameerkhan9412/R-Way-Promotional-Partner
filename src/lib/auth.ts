@@ -1,41 +1,9 @@
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
-import { prisma } from './prisma';
+import { AdminSession, COOKIE_NAME, generateToken, parseToken } from './session';
 
-const COOKIE_NAME = 'rway_admin_session';
-
-export interface AdminSession {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
-
-export function generateToken(payload: AdminSession): string {
-  const data = JSON.stringify({
-    ...payload,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
-  return Buffer.from(data).toString('base64');
-}
-
-export function parseToken(token: string): AdminSession | null {
-  try {
-    const raw = Buffer.from(token, 'base64').toString('utf8');
-    const data = JSON.parse(raw);
-    if (data.exp && Date.now() > data.exp) {
-      return null;
-    }
-    return {
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      role: data.role,
-    };
-  } catch {
-    return null;
-  }
-}
+export type { AdminSession };
+export { COOKIE_NAME, generateToken, parseToken };
 
 export async function getAdminSession(): Promise<AdminSession | null> {
   const cookieStore = await cookies();

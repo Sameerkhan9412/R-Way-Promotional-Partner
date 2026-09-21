@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import {
   Layers,
@@ -67,6 +68,8 @@ interface OrderItem {
 }
 
 export default function OrdersDashboardPage() {
+  const router = useRouter();
+
   // Parent Filter Tabs: 'all' | 'brands' | 'pending' | 'submitted'
   const [parentFilter, setParentFilter] = useState<'all' | 'brands' | 'pending' | 'submitted'>('all');
 
@@ -128,6 +131,10 @@ export default function OrdersDashboardPage() {
   const fetchBrands = useCallback(async () => {
     try {
       const res = await fetch('/api/brands');
+      if (res.status === 401) {
+        router.push('/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+        return;
+      }
       const data = await res.json();
       if (data.brands) {
         setBrandStats(data.brands);
@@ -135,7 +142,7 @@ export default function OrdersDashboardPage() {
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [router]);
 
   // Fetch Orders
   const fetchOrders = useCallback(async () => {
@@ -167,6 +174,10 @@ export default function OrdersDashboardPage() {
       params.set('sortOrder', sortOrder);
 
       const res = await fetch(`/api/orders?${params.toString()}`);
+      if (res.status === 401) {
+        router.push('/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+        return;
+      }
       const data = await res.json();
 
       if (data.orders) {
@@ -180,7 +191,7 @@ export default function OrdersDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, selectedBrandId, timeRange, specificDate, startDate, endDate, searchQuery, sortBy, sortOrder]);
+  }, [router, statusFilter, selectedBrandId, timeRange, specificDate, startDate, endDate, searchQuery, sortBy, sortOrder]);
 
   // Load Settings
   useEffect(() => {
@@ -356,7 +367,7 @@ export default function OrdersDashboardPage() {
               Campaign & Orders Management
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.925rem' }}>
-              Track WhatsApp campaign orders, Amazon review submissions, and brand analytics.
+              Track campaign orders, Amazon / Flipkart / Meesho review submissions, and brand analytics.
             </p>
           </div>
 
@@ -380,10 +391,10 @@ export default function OrdersDashboardPage() {
               <span>Add Single Order</span>
             </button>
 
-            {/* Bulk WhatsApp Import Button */}
+            {/* Bulk Import Button */}
             <Link href="/admin/orders/bulk-import" className="btn btn-gold">
               <UploadCloud size={17} />
-              <span>Bulk Upload</span>
+              <span>Import bulk orders</span>
             </Link>
           </div>
         </div>
@@ -407,7 +418,11 @@ export default function OrdersDashboardPage() {
 
             <button
               onClick={() => {
-                setParentFilter('brands');
+                if (parentFilter === 'brands') {
+                  setParentFilter('all');
+                } else {
+                  setParentFilter('brands');
+                }
               }}
               className={`filter-tab-btn ${parentFilter === 'brands' ? 'active' : ''}`}
             >
@@ -449,7 +464,7 @@ export default function OrdersDashboardPage() {
         {/* ========================================================================= */}
         {/* BRAND SUMMARY CARDS (Required Feature) */}
         {/* ========================================================================= */}
-        {(parentFilter === 'brands' || selectedBrandId === 'all') && (
+        {parentFilter === 'brands' && (
           <div style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
               <h2 style={{ fontSize: '1.15rem', color: 'var(--rway-teal-950)' }}>
@@ -617,7 +632,7 @@ export default function OrdersDashboardPage() {
               className="rway-select"
               style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
             >
-              <option value="all">All Reviews ({counts.totalOrders})</option>
+              <option value="all">All Orders ({counts.totalOrders})</option>
               <option value="pending">⏳ Pending Reviews ({counts.pendingReview})</option>
               <option value="submitted">✅ Submitted Reviews ({counts.submittedReview})</option>
             </select>
@@ -887,7 +902,7 @@ export default function OrdersDashboardPage() {
                         No orders match the selected filters or date range. Paste a deal message to import orders.
                       </p>
                       <Link href="/admin/orders/bulk-import" className="btn btn-gold btn-sm">
-                        <UploadCloud size={15} /> Paste WhatsApp Deal
+                        <UploadCloud size={15} /> Paste Deal
                       </Link>
                     </div>
                   </td>

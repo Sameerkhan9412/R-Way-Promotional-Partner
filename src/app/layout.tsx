@@ -4,11 +4,11 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'RWAY Promotion Partners - Campaign & Order Management',
   description:
-    'Streamlined campaign and bulk order management system for RWAY Promotion Partners. Parse WhatsApp deal orders, track review status, analyze brand performance, and export Excel reports.',
+    'Streamlined campaign and bulk order management system for RWAY Promotion Partners. Parse deal orders, track review status, analyze brand performance, and export Excel reports.',
   keywords: [
     'RWAY Promotion Partners',
     'Amazon deal campaign',
-    'WhatsApp bulk order parser',
+    'bulk order parser',
     'campaign management',
     'review tracking',
   ],

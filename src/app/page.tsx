@@ -44,16 +44,16 @@ export default function HomePage() {
 
           <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.2rem)', lineHeight: 1.15, marginBottom: '1.25rem', color: 'var(--rway-teal-950)' }}>
             Campaign Management & <br />
-            <span style={{ color: 'var(--rway-teal-700)' }}>WhatsApp Bulk Order</span> Intelligence
+            <span style={{ color: 'var(--rway-teal-700)' }}> Bulk Order</span> Intelligence
           </h1>
 
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '680px', margin: '0 auto 2.5rem', lineHeight: 1.6 }}>
-            Directly copy & paste raw WhatsApp deal messages, auto-extract buyer orders, separate by brand, track Amazon review submissions, and export tailored Excel reports.
+            Directly copy & paste raw deal messages, auto-extract buyer orders, separate by brand, track Amazon review submissions, and export tailored Excel reports.
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '3.5rem' }}>
             <Link href="/admin/orders/bulk-import" className="btn btn-gold btn-lg" style={{ minWidth: '220px' }}>
-              <MessageSquare size={20} /> Paste WhatsApp Deal
+              <MessageSquare size={20} /> Paste Deal
             </Link>
             <Link href="/admin/orders" className="btn btn-primary btn-lg" style={{ minWidth: '220px' }}>
               <ShieldCheck size={20} /> Open Admin Panel
@@ -66,9 +66,9 @@ export default function HomePage() {
               <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: 'var(--rway-teal-50)', color: 'var(--rway-teal-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                 <MessageSquare size={22} />
               </div>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Automated WhatsApp Parsing</h3>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Automated Parsing</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Paste multi-order deal summaries from WhatsApp groups. The engine instantly extracts deal dates, brand names, Amazon Order IDs, buyer names, and amounts.
+                Paste multi-order deal summaries from  groups. The engine instantly extracts deal dates, brand names, Amazon Order IDs, buyer names, and amounts.
               </p>
             </div>
 

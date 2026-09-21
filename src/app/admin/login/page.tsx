@@ -1,16 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { RwayLogo } from '@/components/RwayLogo';
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@rway.com');
-  const [password, setPassword] = useState('admin123');
+  const searchParams = useSearchParams();
+
+  const rawRedirect = searchParams.get('redirect') || '/admin/orders';
+  const targetRedirect =
+    rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')
+      ? rawRedirect
+      : '/admin/orders';
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Check if already authenticated
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated && data.user) {
+          router.replace(targetRedirect);
+        }
+      })
+      .catch(() => {});
+  }, [router, targetRedirect]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,18 +50,13 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'Failed to authenticate');
       }
 
-      router.push('/admin/orders');
+      router.push(targetRedirect);
       router.refresh();
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please check credentials.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFillDemo = () => {
-    setEmail('admin@rway.com');
-    setPassword('admin123');
   };
 
   return (
@@ -60,39 +75,37 @@ export default function AdminLoginPage() {
       <div
         className="rway-card"
         style={{
-          maxWidth: '440px',
           width: '100%',
+          maxWidth: '440px',
           padding: '2.5rem',
-          borderRadius: 'var(--radius-xl)',
-          borderTop: '5px solid var(--rway-gold-500)',
-          boxShadow: 'var(--shadow-lg)',
+          boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--border-subtle)',
         }}
       >
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'inline-flex', marginBottom: '1rem' }}>
             <RwayLogo size="lg" />
           </div>
-          <h2 style={{ fontSize: '1.4rem', color: 'var(--rway-teal-950)', marginBottom: '0.35rem' }}>
-            Admin Portal
-          </h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-            Sign in to manage campaigns, parse deals, and export brand reports
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.25rem' }}>
+            Admin Portal Sign In
+          </h1>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            Enter your credentials to access the RWAY campaign management dashboard.
           </p>
         </div>
 
         {error && (
           <div
             style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
-              color: '#991b1b',
-              padding: '0.75rem 1rem',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.85rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '1.25rem',
+              gap: '0.6rem',
+              padding: '0.85rem 1rem',
+              borderRadius: '8px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fee2e2',
+              color: '#b91c1c',
+              fontSize: '0.875rem',
+              marginBottom: '1.5rem',
             }}
           >
             <AlertCircle size={18} style={{ flexShrink: 0 }} />
@@ -105,10 +118,10 @@ export default function AdminLoginPage() {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.825rem',
+                fontSize: '0.8rem',
                 fontWeight: 600,
-                color: 'var(--rway-teal-900)',
-                marginBottom: '0.4rem',
+                color: 'var(--text-main)',
+                marginBottom: '0.35rem',
               }}
             >
               Email Address
@@ -129,7 +142,7 @@ export default function AdminLoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@rway.com"
+                placeholder="admin@example.com"
                 className="rway-input"
                 style={{ paddingLeft: '2.5rem' }}
               />
@@ -140,10 +153,10 @@ export default function AdminLoginPage() {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.825rem',
+                fontSize: '0.8rem',
                 fontWeight: 600,
-                color: 'var(--rway-teal-900)',
-                marginBottom: '0.4rem',
+                color: 'var(--text-main)',
+                marginBottom: '0.35rem',
               }}
             >
               Password
@@ -187,31 +200,15 @@ export default function AdminLoginPage() {
             )}
           </button>
         </form>
-
-        <div
-          style={{
-            marginTop: '1.75rem',
-            paddingTop: '1.25rem',
-            borderTop: '1px solid var(--border-light)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-            textAlign: 'center',
-          }}
-        >
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="btn btn-secondary btn-sm"
-            style={{ alignSelf: 'center' }}
-          >
-            <ShieldCheck size={15} /> Quick Fill Demo Admin
-          </button>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Default Credentials: <b>admin@rway.com</b> / <b>admin123</b>
-          </span>
-        </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

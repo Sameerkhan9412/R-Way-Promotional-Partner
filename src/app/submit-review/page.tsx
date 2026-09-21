@@ -14,6 +14,10 @@ import {
   X,
   Link2,
   FileCheck,
+  Copy,
+  Check,
+  Share2,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function SubmitReviewPage() {
@@ -49,6 +53,39 @@ export default function SubmitReviewPage() {
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; matched?: boolean } | null>(null);
+  const [copiedFormLink, setCopiedFormLink] = useState(false);
+
+  // Copy Review Form Link to clipboard for buyers to share with other buyers
+  const handleCopyFormLink = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedFormLink(true);
+      setTimeout(() => setCopiedFormLink(false), 3000);
+    } catch {
+      prompt('Copy this review form link to share:', url);
+    }
+  };
+
+  // 1-Click WhatsApp share for non-technical buyers
+  const handleShareWhatsApp = () => {
+    const url = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
+    const shareMessage = encodeURIComponent(
+      `Hi! Please submit your deal order review / rating verification here:\n${url}`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${shareMessage}`, '_blank');
+  };
 
   // Upload handler for Cloudinary or fallback storage
   const handleFileUpload = async (
@@ -208,9 +245,9 @@ export default function SubmitReviewPage() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1.5rem' }}
         >
           <RwayLogo size="md" />
-          <Link href="/admin/login" className="btn btn-outline btn-sm">
+          {/* <Link href="/admin/login" className="btn btn-outline btn-sm">
             Admin Portal
-          </Link>
+          </Link> */}
         </div>
       </header>
 
@@ -338,11 +375,45 @@ export default function SubmitReviewPage() {
               ) : (
                 <AlertCircle size={22} color="#dc2626" style={{ flexShrink: 0, marginTop: '2px' }} />
               )}
-              <div>
+              <div style={{ width: '100%' }}>
                 <p style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
                   {result.success ? 'Submission Successful!' : 'Submission Failed'}
                 </p>
                 <p style={{ fontSize: '0.85rem' }}>{result.message}</p>
+                {result.success && (
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={handleCopyFormLink}
+                      className="btn btn-sm"
+                      style={{
+                        backgroundColor: copiedFormLink ? '#16a34a' : '#ffffff',
+                        color: copiedFormLink ? '#ffffff' : '#15803d',
+                        borderColor: '#86efac',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {copiedFormLink ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copiedFormLink ? 'Form Link Copied!' : 'Copy Form Link to Share'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsApp}
+                      className="btn btn-sm"
+                      style={{
+                        backgroundColor: '#ffffff',
+                        color: '#15803d',
+                        borderColor: '#25D366',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <MessageSquare size={14} color="#25D366" />
+                      <span>Share on WhatsApp</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -386,7 +457,7 @@ export default function SubmitReviewPage() {
                   marginBottom: '0.4rem',
                 }}
               >
-                Your Name / WhatsApp Name *
+                Your Name *
               </label>
               <input
                 type="text"
@@ -823,6 +894,79 @@ export default function SubmitReviewPage() {
               )}
             </button>
           </form>
+
+          {/* Share Review Form Section at Bottom for Non-Technical Buyers */}
+          <div
+            style={{
+              marginTop: '2rem',
+              paddingTop: '1.5rem',
+              borderTop: '1px solid var(--border-light)',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1.35rem 1.15rem',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem', justifyContent: 'center', width: '100%', marginTop: '0.25rem' }}>
+                {/* Copy Link Button */}
+                <button
+                  type="button"
+                  onClick={handleCopyFormLink}
+                  className="btn btn-primary"
+                  style={{
+                    backgroundColor: copiedFormLink ? '#16a34a' : 'var(--rway-teal-700)',
+                    borderColor: copiedFormLink ? '#15803d' : 'var(--rway-teal-800)',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    padding: '0.65rem 1.35rem',
+                    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.08)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {copiedFormLink ? (
+                    <>
+                      <Check size={18} />
+                      <span>Link Copied! Ready to Share</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={18} />
+                      <span>Copy Review Form Link</span>
+                    </>
+                  )}
+                </button>
+
+                {/* WhatsApp Share Button */}
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  className="btn btn-outline"
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderColor: '#25D366',
+                    color: '#15803d',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    padding: '0.65rem 1.25rem',
+                  }}
+                >
+                  <MessageSquare size={17} color="#25D366" />
+                  <span>Share on WhatsApp</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 

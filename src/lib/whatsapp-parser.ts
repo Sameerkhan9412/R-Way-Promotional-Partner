@@ -65,7 +65,7 @@ export function parseWhatsAppMessage(rawText: string): ParseResult {
     const expectedCount = currentDeal?.expectedOrderCount ?? null;
 
     const brandName = currentDeal?.brandName || (orders.length > 0 ? 'General' : 'Unknown');
-    const productTitle = currentDeal?.productTitle || currentDeal?.rawBrandProduct || 'WhatsApp Campaign Product';
+    const productTitle = currentDeal?.productTitle || currentDeal?.rawBrandProduct || 'Campaign Product';
 
     const finalized: ParsedDeal = {
       id: 'deal_' + Math.random().toString(36).substring(2, 9),

@@ -74,25 +74,48 @@ export async function GET(request: Request) {
       include: {
         brand: true,
         deal: true,
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
     });
 
-    const exportRows: ExportOrderRow[] = orders.map((o) => ({
-      id: o.id,
-      orderId: o.orderId,
-      brandName: o.brand.name,
-      dealCode: o.deal?.dealCode || '-',
-      customerName: o.customerName,
-      amount: o.amount,
-      status: o.status,
-      orderDate: o.orderDate,
-      reviewSubmittedAt: o.reviewSubmittedAt,
-      reviewRating: o.reviewRating,
-      deliveredProofUrl: o.deliveredProofUrl,
-      ratingProofUrl: o.ratingProofUrl,
-    }));
+    const url = new URL(request.url);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || url.origin;
 
-    const workbookBuffer = generateOrdersWorkbook(exportRows, targetBrandName);
+    const exportRows: ExportOrderRow[] = orders.map((o) => {
+      let reviewLink: string | null = null;
+      if (o.notes) {
+        const match = o.notes.match(/https?:\/\/[^\s"'<>\(\)\|]+/i);
+        if (match) reviewLink = match[0];
+      }
+      if (!reviewLink && (o as any).reviews?.[0]?.rawData) {
+        try {
+          const raw = JSON.parse((o as any).reviews[0].rawData);
+          if (raw.reviewLink) reviewLink = raw.reviewLink;
+        } catch (e) {}
+      }
+
+      return {
+        id: o.id,
+        orderId: o.orderId,
+        brandName: o.brand.name,
+        dealCode: o.deal?.dealCode || '-',
+        customerName: o.customerName,
+        amount: o.amount,
+        status: o.status,
+        orderDate: o.orderDate,
+        reviewSubmittedAt: o.reviewSubmittedAt,
+        reviewRating: o.reviewRating,
+        deliveredProofUrl: o.deliveredProofUrl || (o as any).reviews?.[0]?.deliveredScreenshotUrl || null,
+        ratingProofUrl: o.ratingProofUrl || (o as any).reviews?.[0]?.ratingScreenshotUrl || null,
+        reviewLink: reviewLink,
+        notes: o.notes,
+      };
+    });
+
+    const workbookBuffer = generateOrdersWorkbook(exportRows, targetBrandName, baseUrl);
     const dateStamp = new Date().toISOString().split('T')[0];
     const fileName = `RWAY_${targetBrandName.replace(/\s+/g, '_')}_Orders_${dateStamp}.xlsx`;
 

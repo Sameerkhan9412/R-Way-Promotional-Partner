@@ -102,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
             }`}
           >
             <UploadCloud size={16} />
-            <span>Bulk Upload</span>
+            <span>Import bulk orders</span>
           </Link>
         </nav>
 
@@ -112,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings }) => {
           <button
             onClick={handleCopyFormLink}
             className="btn btn-sm btn-secondary"
-            title="Copy Review Form Link to share with buyers on WhatsApp"
+            title="Copy Review Form Link to share with buyers"
             style={{
               borderColor: 'var(--rway-gold-400)',
               backgroundColor: 'var(--rway-gold-50)',

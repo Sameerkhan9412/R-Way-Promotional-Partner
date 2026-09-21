@@ -67,18 +67,24 @@ export default function BulkImportPage() {
   useEffect(() => {
     // Load existing brands from DB for selector
     fetch('/api/brands')
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === 401) {
+          router.push('/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
-        if (data.brands) {
+        if (data && data.brands) {
           setExistingBrands(data.brands.map((b: any) => ({ id: b.id, name: b.name })));
         }
       })
       .catch(() => {});
-  }, []);
+  }, [router]);
 
   const handleParse = () => {
     if (!rawText.trim()) {
-      setNotification({ type: 'error', message: 'Please paste WhatsApp deal text first.' });
+      setNotification({ type: 'error', message: 'Please paste deal text first.' });
       return;
     }
 
@@ -193,6 +199,11 @@ export default function BulkImportPage() {
         body: JSON.stringify(payload),
       });
 
+      if (res.status === 401) {
+        router.push('/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+        return;
+      }
+
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to save orders');
@@ -236,7 +247,7 @@ export default function BulkImportPage() {
                 Bulk Order Import
               </h1>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                Paste the order/deal message copied from WhatsApp.
+                Paste the order/deal message copied.
               </p>
             </div>
 
@@ -317,7 +328,7 @@ export default function BulkImportPage() {
               }}
             >
               <UploadCloud size={18} color="var(--rway-teal-700)" />
-              <span>WhatsApp Deal Text Message</span>
+              <span>Deal Text Message</span>
             </label>
             {rawText && (
               <button
@@ -335,7 +346,7 @@ export default function BulkImportPage() {
             rows={9}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
-            placeholder="Paste WhatsApp deal message here...
+            placeholder="Paste deal message here...
 
 Example:
 16/09/2026 Deal 50
@@ -641,7 +652,7 @@ Total 1432
                                   <span
                                     className="badge badge-pending"
                                     style={{ fontSize: '0.68rem', whiteSpace: 'nowrap' }}
-                                    title="No explicit price on line in WhatsApp"
+                                    title="No explicit price on line"
                                   >
                                     Check Price
                                   </span>
