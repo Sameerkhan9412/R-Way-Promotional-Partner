@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { RwayLogo } from '@/components/RwayLogo';
 import { Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
@@ -150,17 +151,28 @@ function AdminLoginForm() {
           </div>
 
           <div>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: 'var(--text-main)',
-                marginBottom: '0.35rem',
-              }}
-            >
-              Password
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <label
+                style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: 'var(--text-main)',
+                }}
+              >
+                Password
+              </label>
+              <Link
+                href="/admin/forgot-password"
+                style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--rway-teal-600)',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div style={{ position: 'relative' }}>
               <Lock
                 size={18}

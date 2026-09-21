@@ -7,6 +7,7 @@ import { Navbar } from '@/components/Navbar';
 import {
   Layers,
   FileSpreadsheet,
+  FileText,
   Plus,
   UploadCloud,
   Search,
@@ -26,6 +27,7 @@ import {
   Sparkles,
   BarChart3,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
 
 interface BrandStat {
@@ -103,6 +105,8 @@ export default function OrdersDashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [googleFormUrl, setGoogleFormUrl] = useState('');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportingBrandId, setExportingBrandId] = useState<string | null>(null);
 
   // Single Order Form State
   const [singleForm, setSingleForm] = useState({
@@ -265,7 +269,51 @@ export default function OrdersDashboardPage() {
     setTimeout(() => setCopiedOrderId(null), 2000);
   };
 
-  // Export Excel
+  // Export PDF with native browser download (guaranteed .pdf filename without blob UUID)
+  const handleExportPdf = (brandId: string = 'all') => {
+    const params = new URLSearchParams();
+    if (brandId !== 'all') params.set('brandId', brandId);
+    else if (selectedBrandId !== 'all') params.set('brandId', selectedBrandId);
+
+    if (statusFilter === 'pending') params.set('status', 'pending');
+    else if (statusFilter === 'submitted') params.set('status', 'submitted');
+
+    params.set('timeRange', timeRange);
+    if (timeRange === 'single' && specificDate) {
+      params.set('specificDate', specificDate);
+    } else if (timeRange === 'custom') {
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+    }
+
+    const dateStamp = new Date().toISOString().split('T')[0];
+    let brandLabel = 'All_Brands';
+    if (brandId !== 'all') {
+      const found = brandStats.find((b) => b.id === brandId);
+      if (found) brandLabel = found.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    } else if (selectedBrandId !== 'all') {
+      const found = brandStats.find((b) => b.id === selectedBrandId);
+      if (found) brandLabel = found.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    }
+    const fileName = `RWAY_${brandLabel}_Orders_${dateStamp}.pdf`;
+    const exportUrl = `/api/export/pdf?${params.toString()}`;
+
+    if (brandId !== 'all') {
+      setExportingBrandId(brandId);
+      setTimeout(() => setExportingBrandId(null), 2500);
+    } else {
+      setIsExportingPdf(true);
+      setTimeout(() => setIsExportingPdf(false), 2500);
+    }
+
+    // Direct native browser download - streams directly to user's Downloads folder
+    window.location.href = exportUrl;
+
+    setToastMessage(`Downloading ${fileName}... Check your Downloads folder.`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Export Excel (alternative)
   const handleExportExcel = (brandId: string = 'all') => {
     const params = new URLSearchParams();
     if (brandId !== 'all') params.set('brandId', brandId);
@@ -372,14 +420,30 @@ export default function OrdersDashboardPage() {
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-            {/* 1-Click Excel Export for current view */}
+            {/* 1-Click PDF Export for current view */}
             <button
-              onClick={() => handleExportExcel(selectedBrandId)}
+              onClick={() => handleExportPdf(selectedBrandId)}
+              disabled={isExportingPdf}
               className="btn btn-outline"
-              title="Download Excel sheet of current filtered orders"
+              title="Download PDF report of current filtered orders (with clickable links)"
+              style={{
+                borderColor: '#e11d48',
+                color: '#be123c',
+                backgroundColor: '#fff1f2',
+                opacity: isExportingPdf ? 0.7 : 1,
+              }}
             >
-              <FileSpreadsheet size={17} color="#166534" />
-              <span>Export Excel (.xlsx)</span>
+              {isExportingPdf ? (
+                <>
+                  <Loader2 size={17} className="animate-spin" color="#e11d48" />
+                  <span>Downloading PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileText size={17} color="#e11d48" />
+                  <span>Export PDF (.pdf)</span>
+                </>
+              )}
             </button>
 
             {/* Add Single Order Modal Trigger */}
@@ -392,17 +456,17 @@ export default function OrdersDashboardPage() {
             </button>
 
             {/* Bulk Import Button */}
-            <Link href="/admin/orders/bulk-import" className="btn btn-gold">
+            {/* <Link href="/admin/orders/bulk-import" className="btn btn-gold">
               <UploadCloud size={17} />
               <span>Import bulk orders</span>
-            </Link>
+            </Link> */}
           </div>
         </div>
 
         {/* ========================================================================= */}
         {/* PARENT FILTERS (Tabs) */}
         {/* ========================================================================= */}
-        <div style={{ marginBottom: '1.25rem' }}>
+        {/* <div style={{ marginBottom: '1.25rem' }}>
           <div className="filter-tabs">
             <button
               onClick={() => {
@@ -459,7 +523,7 @@ export default function OrdersDashboardPage() {
               </span>
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* ========================================================================= */}
         {/* BRAND SUMMARY CARDS (Required Feature) */}
@@ -471,7 +535,7 @@ export default function OrdersDashboardPage() {
                 Brand Performance & Export ({brandStats.length} Brands)
               </h2>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Click Export Excel on any brand for dedicated report
+                Click Export PDF on any brand for dedicated report
               </span>
             </div>
 
@@ -502,19 +566,30 @@ export default function OrdersDashboardPage() {
                       )}
                     </div>
                     <button
-                      onClick={() => handleExportExcel(b.id)}
+                      onClick={() => handleExportPdf(b.id)}
+                      disabled={exportingBrandId === b.id}
                       className="btn btn-outline btn-sm"
-                      title={`Export ${b.name} Orders to Excel`}
+                      title={`Export ${b.name} Orders to PDF`}
                       style={{
                         padding: '0.35rem 0.65rem',
                         fontSize: '0.75rem',
-                        borderColor: 'var(--rway-teal-300)',
-                        backgroundColor: 'var(--rway-teal-50)',
-                        color: 'var(--rway-teal-900)',
+                        borderColor: '#fecdd3',
+                        backgroundColor: '#fff1f2',
+                        color: '#be123c',
+                        opacity: exportingBrandId === b.id ? 0.7 : 1,
                       }}
                     >
-                      <FileSpreadsheet size={14} color="#166534" />
-                      <span>Export Excel</span>
+                      {exportingBrandId === b.id ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" color="#e11d48" />
+                          <span>Exporting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText size={14} color="#e11d48" />
+                          <span>Export PDF</span>
+                        </>
+                      )}
                     </button>
                   </div>
 

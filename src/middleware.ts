@@ -8,10 +8,15 @@ export function middleware(request: NextRequest) {
   const session = token ? parseToken(token) : null;
   const isAuthenticated = Boolean(session);
 
-  // 1. Handle Admin Login page
-  if (pathname === '/admin/login') {
-    if (isAuthenticated) {
-      // If already logged in, redirect to requested target or /admin/orders
+  // 1. Handle Admin Authentication Entry Pages (Login, Forgot Password, Reset Password)
+  const isPublicAuthPage =
+    pathname === '/admin/login' ||
+    pathname === '/admin/forgot-password' ||
+    pathname === '/admin/reset-password';
+
+  if (isPublicAuthPage) {
+    if (isAuthenticated && pathname === '/admin/login') {
+      // If already logged in and visiting login, redirect to target or /admin/orders
       const redirectUrl = request.nextUrl.searchParams.get('redirect') || '/admin/orders';
       return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
